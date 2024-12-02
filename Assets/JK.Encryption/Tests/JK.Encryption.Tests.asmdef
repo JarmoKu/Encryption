@@ -1,0 +1,18 @@
+{
+    "name": "JK.Encryption.Tests",
+    "rootNamespace": "",
+    "references": [
+        "GUID:679286fe80638b346a24f317ec88a7f4"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
