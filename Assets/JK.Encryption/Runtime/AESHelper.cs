@@ -6,8 +6,8 @@ namespace JK.Encryption
 {
     public static class AESHelper
     {
-        public const int SaltSize = 32;
         public const int KeySize = 32;
+        public const int SaltSize = 64;
         private const int Iterations = 10000;
 
         public static byte[] CreateSalt ()
@@ -19,68 +19,101 @@ namespace JK.Encryption
             return salt;
         }
 
-        public static Rfc2898DeriveBytes CreateKey (string password, byte[] salt)
+        public static byte[] CreateKey (string password, byte[] salt)
         {
-            return new Rfc2898DeriveBytes (password, salt, Iterations);
+            return new Rfc2898DeriveBytes (password, salt, Iterations)
+                .GetBytes (KeySize);
         }
 
-        public static (byte[] EncryptedData, byte[] IV) Encrypt (string data, Rfc2898DeriveBytes key)
+        public static byte[] Encrypt (string data, byte[] key)
+        {
+            using var aes = Aes.Create ();
+            aes.Key = key;
+
+            using var encryptionStream = new MemoryStream ();
+
+            using var encrypt = new CryptoStream (
+                encryptionStream,
+                aes.CreateEncryptor (),
+                CryptoStreamMode.Write
+                );
+
+            var utfD = new UTF8Encoding (false).GetBytes (data);
+
+            encrypt.Write (utfD, 0, utfD.Length);
+            encrypt.FlushFinalBlock ();
+            encrypt.Dispose ();
+
+            var encryptedData = encryptionStream.ToArray ();
+            return CombineDataAndIV (encryptedData, aes.IV); ;
+        }
+
+        public static string Decrypt (byte[] dataAndIV, byte[] key)
         {
             try
             {
-                var engAlc = Aes.Create ();
-                engAlc.Key = key.GetBytes (KeySize);
+                using var decryptionStream = new MemoryStream ();
 
-                var encryptionStream = new MemoryStream ();
-                var utfD = new UTF8Encoding (false).GetBytes (data);
+                using (var decAlg = Aes.Create ())
+                {
+                    var (data, IV) = SeparateDataAndIV (dataAndIV);
 
-                var encrypt = new CryptoStream (
-                    encryptionStream,
-                    engAlc.CreateEncryptor (),
-                    CryptoStreamMode.Write
-                    );
+                    decAlg.Key = key;
+                    decAlg.IV = IV;
 
-                encrypt.Write (utfD, 0, utfD.Length);
-                encrypt.FlushFinalBlock ();
-                encrypt.Close ();
-                key.Reset ();
+                    using var decrypt = new CryptoStream (
+                        decryptionStream,
+                        decAlg.CreateDecryptor (),
+                        CryptoStreamMode.Write
+                        );
 
-                var encryptedData = encryptionStream.ToArray ();
-                return (encryptedData, engAlc.IV);
-            }
-            catch
-            {
-                return (null, null);
-            }
-        }
+                    decrypt.Write (data, 0, data.Length);
+                    decrypt.FlushFinalBlock ();
+                    decrypt.Dispose ();
+                }
 
-        public static string Decrypt (byte[] data, byte[] IV, Rfc2898DeriveBytes key)
-        {
-            try
-            {
-                var decAlg = Aes.Create ();
-                decAlg.Key = key.GetBytes (KeySize);
-                decAlg.IV = IV;
+                var decryptedData = new UTF8Encoding (false)
+                    .GetString (decryptionStream.ToArray ());
 
-                var decryptionStream = new MemoryStream ();
-                var decrypt = new CryptoStream (
-                    decryptionStream,
-                    decAlg.CreateDecryptor (),
-                    CryptoStreamMode.Write
-                    );
-
-                decrypt.Write (data, 0, data.Length);
-                decrypt.Flush ();
-                decrypt.Close ();
-                key.Reset ();
-
-                var decryptedData = new UTF8Encoding (false).GetString (decryptionStream.ToArray ());
                 return decryptedData;
             }
             catch
             {
                 return null;
             }
+        }
+
+        private static byte[] CombineDataAndIV (byte[] encryptedData, byte[] IV)
+        {
+            var length = IV.Length + encryptedData.Length;
+            var bytes = new byte[length];
+
+            for (var i = 0; i < length; i++)
+            {
+                bytes[i] = i < IV.Length ? IV[i] : encryptedData[i - IV.Length];
+            }
+
+            return bytes;
+        }
+
+        private static (byte[] Data, byte[] IV) SeparateDataAndIV (byte[] dataAndIV)
+        {
+            var IV = new byte[16];
+            var data = new byte[dataAndIV.Length - 16];
+
+            for (var i = 0; i < dataAndIV.Length; i++)
+            {
+                if (i < 16)
+                {
+                    IV[i] = dataAndIV[i];
+                }
+                else
+                {
+                    data[i - 16] = dataAndIV[i];
+                }
+            }
+
+            return (data, IV);
         }
     }
 }

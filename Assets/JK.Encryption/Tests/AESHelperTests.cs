@@ -28,15 +28,15 @@ namespace JK.Encryption.Tests
         {
             var salt = AESHelper.CreateSalt ();
             var key = AESHelper.CreateKey (Password, salt);
-            Assert.AreEqual (AESHelper.KeySize, key.GetBytes(AESHelper.KeySize).Length);
+            Assert.AreEqual (AESHelper.KeySize, key.Length);
         }
 
         [Test]
         public void CreateKey_ReturnsSameResult_WithSameInput ()
         {
             var salt = AESHelper.CreateSalt ();
-            var keyOne = AESHelper.CreateKey (Password, salt).GetBytes (AESHelper.KeySize);
-            var keyTwo = AESHelper.CreateKey (Password, salt).GetBytes (AESHelper.KeySize);
+            var keyOne = AESHelper.CreateKey (Password, salt);
+            var keyTwo = AESHelper.CreateKey (Password, salt);
             CollectionAssert.AreEqual (keyOne, keyTwo);
         }
 
@@ -54,8 +54,8 @@ namespace JK.Encryption.Tests
         {
             var salt = AESHelper.CreateSalt ();
             var key = AESHelper.CreateKey (Password, salt);
-            var (bytes, IV) = AESHelper.Encrypt (TestData, key);
-            var decryptedData = AESHelper.Decrypt (bytes, IV, key);
+            var bytes = AESHelper.Encrypt (TestData, key);
+            var decryptedData = AESHelper.Decrypt (bytes, key);
             Assert.AreEqual (TestData, decryptedData);
         }
 
@@ -64,9 +64,9 @@ namespace JK.Encryption.Tests
         {
             var salt = AESHelper.CreateSalt ();
             var correctKey = AESHelper.CreateKey (Password, salt);
-            var (bytes, IV) = AESHelper.Encrypt (TestData, correctKey);
+            var bytes = AESHelper.Encrypt (TestData, correctKey);
             var falseKey = AESHelper.CreateKey (WrongPassword, salt);
-            var encryptedData = AESHelper.Decrypt (bytes, IV, falseKey);
+            var encryptedData = AESHelper.Decrypt (bytes, falseKey);
             Assert.IsNull (encryptedData);
         }
 
@@ -75,12 +75,12 @@ namespace JK.Encryption.Tests
         {
             var salt = AESHelper.CreateSalt ();
             var key = AESHelper.CreateKey (Password, salt);
-            var (bytes, IV) = AESHelper.Encrypt (TestData, key);
-            var decryptedData = AESHelper.Decrypt (bytes, IV, key);
+            var bytes = AESHelper.Encrypt (TestData, key);
+            var decryptedData = AESHelper.Decrypt (bytes, key);
 
             var modifiedData = decryptedData + "addition";
-            (bytes, IV) = AESHelper.Encrypt (modifiedData, key);
-            decryptedData = AESHelper.Decrypt (bytes, IV, key);
+            var bytesNew = AESHelper.Encrypt (modifiedData, key);
+            decryptedData = AESHelper.Decrypt (bytesNew, key);
             Assert.AreEqual (modifiedData, decryptedData);
         }
     }
