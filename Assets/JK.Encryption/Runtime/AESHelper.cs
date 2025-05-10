@@ -96,7 +96,7 @@ namespace JK.Encryption
             return bytes;
         }
 
-        private static (byte[] Data, byte[] IV) SeparateDataAndIV (byte[] dataAndIV)
+        private static (byte[] data, byte[] IV) SeparateDataAndIV (byte[] dataAndIV)
         {
             var IV = new byte[16];
             var data = new byte[dataAndIV.Length - 16];
